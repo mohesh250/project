@@ -1,43 +1,58 @@
 import streamlit as st
-from datetime import timedelta
 
+# Title of the Streamlit app
 st.title("Upload and View Text or Video Files")
-uploaded_file = st.file_uploader("Choose a file", type=["txt", "mp4", "mov", "avi", "mkv", "flv"])
 
-if uploaded_file is not None:
-    file_type = uploaded_file.type
-    if file_type == "text/plain":
-        file_content = uploaded_file.read().decode("utf-8")
-        st.subheader("Text File Content:")
-        st.text_area("File Content", file_content, height=300)
-    elif file_type.startswith("video"):
-        st.subheader("Video File:")
+# File uploader widget allows multiple files to be uploaded
+uploaded_files = st.file_uploader("Choose files", type=["txt", "mp4", "mov", "avi", "mkv", "flv"],
+                                  accept_multiple_files=True)
 
-        # Video file upload display
-        st.video(uploaded_file)
+# Initialize lists to hold text and video files
+text_files = []
+video_files = []
 
-        # Optional: add a timestamp input to let users jump to a specific part of the video
-        st.subheader("Jump to a Specific Time in the Video:")
+# Process uploaded files
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        file_type = uploaded_file.type
 
-        # Provide a time input box for the user to jump to a time in HH:MM:SS format
-        video_time = st.text_input("Enter time in HH:MM:SS format", "00:00:00")
+        # If the file is a text file
+        if file_type == "text/plain":
+            text_files.append(uploaded_file)
 
-        try:
-            # Parse the time string into seconds
-            time_parts = video_time.split(":")
-            if len(time_parts) == 3:
-                hours, minutes, seconds = map(int, time_parts)
-                total_seconds = timedelta(hours=hours, minutes=minutes, seconds=seconds).total_seconds()
+        # If the file is a video file
+        elif file_type.startswith("video"):
+            video_files.append(uploaded_file)
 
-                # Display a message to inform the user if the time input is valid
-                st.write(f"Jumping to {video_time} ({total_seconds} seconds)...")
+    # Add a search bar to filter files
+    search_query = st.text_input("Search for a file", "")
 
-                # Play video from the specific timestamp (this feature needs to be handled in a frontend environment
-                # or by using a more sophisticated tool, Streamlit itself doesn't allow jumping to a specific time in its video player)
-                st.video(uploaded_file, start_time=int(total_seconds))
-            else:
-                st.error("Invalid time format! Please use HH:MM:SS.")
-        except ValueError:
-            st.error("Invalid time input! Make sure you use a valid HH:MM:SS format.")
+    # Filter text files based on the search query
+    filtered_text_files = [file for file in text_files if search_query.lower() in file.name.lower()]
+
+    # Filter video files based on the search query
+    filtered_video_files = [file for file in video_files if search_query.lower() in file.name.lower()]
+
+    # Show filtered text files and their contents
+    if filtered_text_files:
+        st.subheader("Text Files Content:")
+        for text_file in filtered_text_files:
+            file_content = text_file.read().decode("utf-8")
+            st.text_area(f"Content of {text_file.name}", file_content, height=300)
     else:
-        st.error("Unsupported file type!")
+        st.write("No text files found matching your search.")
+
+    # Show filtered video files and allow video selection
+    if filtered_video_files:
+        st.subheader("Video Files:")
+
+        # Create a dropdown to select a video
+        video_file_names = [file.name for file in filtered_video_files]
+        selected_video = st.selectbox("Select a video to play", video_file_names)
+
+        # Display the selected video
+        for video_file in filtered_video_files:
+            if video_file.name == selected_video:
+                st.video(video_file)
+    else:
+        st.write("No video files found matching your search.")
